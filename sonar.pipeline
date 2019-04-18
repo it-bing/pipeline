@@ -1,0 +1,35 @@
+#!/usr/bin/groovy
+
+String skipSonar = "${env.skipSonar}"
+String skipTest  = "${env.skipTest}"
+
+node("${nodeSlave}"){
+		//checkout
+		stage 'checkout'
+		checkout([$class: 'GitSCM', 
+				branches: [[name: '*/master']], 
+				doGenerateSubmoduleConfigurations: false, 
+				extensions: [], 
+				submoduleCfg: [], 
+				userRemoteConfigs: [[url: 'http://172.16.1.177/root/maven.git']]])
+
+		//build
+		stage 'build'
+			if ("${skipTest}" == 'true' ){
+				mvnHome = tool 'MAVEN'
+				sh " ${mvnHome}/bin/mvn ${buildShell} -DskipTest"
+			} else { 
+				sh "${mvnHome}/bin/mvn ${buildShell}" 
+			}
+			
+		//sonar
+		stage 'sonar'
+			sh """
+				/home/sonar/sonar-scanner/bin/sonar-scanner -Dsonar.projectKey=${serviceName} \
+									-Dsonar.projectName=${serviceName}  \
+									-Dsonar.login=eefc95da11f949a24bea78c4e1540733a462d50d  \
+									-Dsonar.sources=/home/sonar/code/   \
+									-Dsonar.host.url=${sonarServer}  
+				"""
+}
+
